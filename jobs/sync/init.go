@@ -11,15 +11,15 @@ import (
 	"gopkg.in/yaml.v2"
 
 	sdb "github.com/case-framework/case-backend/pkg/db/study"
-	rdb "github.com/case-framework/recruitement-list-backend/pkg/db/recruitement-list"
-	"github.com/case-framework/recruitement-list-backend/pkg/sync"
+	rdb "github.com/case-framework/recruitment-list-backend/pkg/db/recruitment-list"
+	"github.com/case-framework/recruitment-list-backend/pkg/sync"
 )
 
 const (
 	ENV_CONFIG_FILE_PATH = "CONFIG_FILE_PATH"
 
-	ENV_RECRUITMENT_LIST_DB_USERNAME = "RECRUITEMENT_LIST_DB_USERNAME"
-	ENV_RECRUITMENT_LIST_DB_PASSWORD = "RECRUITEMENT_LIST_DB_PASSWORD"
+	ENV_RECRUITMENT_LIST_DB_USERNAME = "RECRUITMENT_LIST_DB_USERNAME"
+	ENV_RECRUITMENT_LIST_DB_PASSWORD = "RECRUITMENT_LIST_DB_PASSWORD"
 
 	ENV_STUDY_DB_USERNAME = "STUDY_DB_USERNAME"
 	ENV_STUDY_DB_PASSWORD = "STUDY_DB_PASSWORD"
@@ -27,7 +27,7 @@ const (
 	ENV_STUDY_GLOBAL_SECRET = "STUDY_GLOBAL_SECRET"
 )
 
-type RecruitementListApiConfig struct {
+type RecruitmentListApiConfig struct {
 	// Logging configs
 	Logging utils.LoggerConfig `json:"logging" yaml:"logging"`
 
@@ -38,8 +38,8 @@ type RecruitementListApiConfig struct {
 
 	// DB configs
 	DBConfigs struct {
-		RecruitementListDB db.DBConfigYaml `json:"recruitement_list_db" yaml:"recruitement_list_db"`
-		StudyDB            db.DBConfigYaml `json:"study_db" yaml:"study_db"`
+		RecruitmentListDB db.DBConfigYaml `json:"recruitment_list_db" yaml:"recruitment_list_db"`
+		StudyDB           db.DBConfigYaml `json:"study_db" yaml:"study_db"`
 	} `json:"db_configs" yaml:"db_configs"`
 
 	SmtpBridgeConfig *struct {
@@ -50,9 +50,9 @@ type RecruitementListApiConfig struct {
 }
 
 var (
-	conf                      RecruitementListApiConfig
-	recruitementListDBService *rdb.RecruitementListDBService
-	studyDBService            *sdb.StudyDBService
+	conf                     RecruitmentListApiConfig
+	recruitmentListDBService *rdb.RecruitmentListDBService
+	studyDBService           *sdb.StudyDBService
 )
 
 func init() {
@@ -95,11 +95,11 @@ func init() {
 
 func secretsOverride() {
 	if dbUsername := os.Getenv(ENV_RECRUITMENT_LIST_DB_USERNAME); dbUsername != "" {
-		conf.DBConfigs.RecruitementListDB.Username = dbUsername
+		conf.DBConfigs.RecruitmentListDB.Username = dbUsername
 	}
 
 	if dbPassword := os.Getenv(ENV_RECRUITMENT_LIST_DB_PASSWORD); dbPassword != "" {
-		conf.DBConfigs.RecruitementListDB.Password = dbPassword
+		conf.DBConfigs.RecruitmentListDB.Password = dbPassword
 	}
 
 	if dbUsername := os.Getenv(ENV_STUDY_DB_USERNAME); dbUsername != "" {
@@ -117,7 +117,7 @@ func secretsOverride() {
 
 func initDBs() {
 	var err error
-	recruitementListDBService, err = rdb.NewManagementUserDBService(db.DBConfigFromYamlObj(conf.DBConfigs.RecruitementListDB, nil))
+	recruitmentListDBService, err = rdb.NewManagementUserDBService(db.DBConfigFromYamlObj(conf.DBConfigs.RecruitmentListDB, nil))
 	if err != nil {
 		slog.Error("Error connecting to recruitment list DB", slog.String("error", err.Error()))
 	}

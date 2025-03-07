@@ -3,7 +3,7 @@ package permissionchecker
 import (
 	"log/slog"
 
-	rdb "github.com/case-framework/recruitement-list-backend/pkg/db/recruitment-list"
+	rdb "github.com/case-framework/recruitment-list-backend/pkg/db/recruitment-list"
 )
 
 type DBConnector interface {

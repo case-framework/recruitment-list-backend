@@ -3,13 +3,13 @@ package main
 import (
 	"log/slog"
 
-	"github.com/case-framework/recruitement-list-backend/pkg/sync"
+	"github.com/case-framework/recruitment-list-backend/pkg/sync"
 )
 
 func main() {
 	slog.Info("Sync job started")
 
-	rls, err := recruitementListDBService.GetRecruitmentListsInfos()
+	rls, err := recruitmentListDBService.GetRecruitmentListsInfos()
 	if err != nil {
 		slog.Error("could not retrieve recruitment lists", slog.String("error", err.Error()))
 		return
@@ -20,7 +20,7 @@ func main() {
 
 		// sync participants
 		if err := sync.SyncParticipantsForRL(
-			recruitementListDBService,
+			recruitmentListDBService,
 			studyDBService,
 			rl.ID.Hex(),
 			conf.StudyServicesConnection.InstanceID,
@@ -32,7 +32,7 @@ func main() {
 
 		// sync responses
 		if err := sync.SyncResearchDataForRL(
-			recruitementListDBService,
+			recruitmentListDBService,
 			studyDBService,
 			rl.ID.Hex(),
 			conf.StudyServicesConnection.InstanceID,
