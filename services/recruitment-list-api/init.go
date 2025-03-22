@@ -97,6 +97,7 @@ func init() {
 		conf.Logging.MaxAge,
 		conf.Logging.MaxBackups,
 		conf.Logging.CompressOldLogs,
+		conf.Logging.IncludeBuildInfo,
 	)
 
 	// Override secrets from environment variables
