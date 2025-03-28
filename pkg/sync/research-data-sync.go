@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"maps"
+
 	sDB "github.com/case-framework/case-backend/pkg/db/study"
 	surveydefinition "github.com/case-framework/case-backend/pkg/study/exporter/survey-definition"
 	surveyresponses "github.com/case-framework/case-backend/pkg/study/exporter/survey-responses"
@@ -118,7 +120,24 @@ func updateAndSaveParticipantInfos(
 	lastDataSync *time.Time,
 	globalStudySecret string,
 ) (map[string]interface{}, error) {
-	updatedParticipantInfo := make(map[string]interface{})
+	updatedParticipantInfo := make(map[string]any)
+
+	// populate participant info from current study participant
+	maps.Copy(updatedParticipantInfo, participant.Infos)
+
+	// delete keys that not in the expected participant info
+	for key := range updatedParticipantInfo {
+		deleteEntry := true
+		for _, pInfoDef := range recruitmentList.ParticipantData.ParticipantInfos {
+			if pInfoDef.Label == key {
+				deleteEntry = false
+				break
+			}
+		}
+		if deleteEntry {
+			delete(updatedParticipantInfo, key)
+		}
+	}
 
 	lastResponseCache := make(map[string]map[string]interface{})
 	lastConfidentialDataCache := make(map[string]studyTypes.SurveyResponse)
