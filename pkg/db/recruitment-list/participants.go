@@ -197,11 +197,40 @@ type PaginationInfos struct {
 	PageSize    int64 `json:"pageSize"`
 }
 
-func (dbService *RecruitmentListDBService) GetParticipantsByRecruitmentListID(rlID string, page int64, limit int64) (participants []Participant, paginationInfo PaginationInfos, err error) {
+type ParticipantFilter struct {
+	IncludedSince     *time.Time
+	IncludedUntil     *time.Time
+	ParticipantID     string
+	RecruitmentStatus string
+}
+
+type ParticipantSort struct {
+	Field string
+	Order string
+}
+
+func (dbService *RecruitmentListDBService) GetParticipantsByRecruitmentListID(rlID string, page int64, limit int64,
+	pFilter ParticipantFilter,
+	sort ParticipantSort,
+) (participants []Participant, paginationInfo PaginationInfos, err error) {
 	ctx, cancel := dbService.getContext()
 	defer cancel()
 
 	filter := bson.M{"recruitmentListId": rlID}
+	if pFilter.IncludedSince != nil && pFilter.IncludedUntil != nil {
+		filter["includedAt"] = bson.M{"$gte": pFilter.IncludedSince, "$lte": pFilter.IncludedUntil}
+	} else if pFilter.IncludedSince != nil {
+		filter["includedAt"] = bson.M{"$gte": pFilter.IncludedSince}
+	} else if pFilter.IncludedUntil != nil {
+		filter["includedAt"] = bson.M{"$lte": pFilter.IncludedUntil}
+	}
+
+	if pFilter.ParticipantID != "" {
+		filter["participantId"] = pFilter.ParticipantID
+	}
+	if pFilter.RecruitmentStatus != "" {
+		filter["recruitmentStatus"] = pFilter.RecruitmentStatus
+	}
 
 	count, err := dbService.collectionParticipants().CountDocuments(ctx, filter)
 	if err != nil {
@@ -214,9 +243,13 @@ func (dbService *RecruitmentListDBService) GetParticipantsByRecruitmentListID(rl
 		limit,
 	)
 
-	sortBy := bson.M{
-		"includedAt": -1,
+	sortBy := bson.D{}
+	if sort.Order == "desc" {
+		sortBy = append(sortBy, bson.E{Key: sort.Field, Value: -1})
+	} else {
+		sortBy = append(sortBy, bson.E{Key: sort.Field, Value: 1})
 	}
+	sortBy = append(sortBy, bson.E{Key: "_id", Value: 1})
 
 	opts := options.Find()
 	opts.SetLimit(limit)

@@ -572,9 +572,49 @@ func (h *HttpEndpoints) getParticipants(c *gin.Context) {
 		return
 	}
 
-	slog.Info("get participants", slog.String("userID", token.Subject), slog.String("recruitmentListID", recruitmentListID), slog.String("page", page), slog.String("limit", limit))
+	// filters:
+	includedSinceFilter := c.DefaultQuery("includedSince", "")
+	var includedSince *time.Time
+	if includedSinceFilter != "" {
+		t, err := time.Parse(time.RFC3339, includedSinceFilter)
+		if err != nil {
+			slog.Error("could not parse includedSince", slog.String("error", err.Error()))
+		} else {
+			includedSince = &t
+		}
+	}
+	includedUntilFilter := c.DefaultQuery("includedUntil", "")
+	var includedUntil *time.Time
+	if includedUntilFilter != "" {
+		t, err := time.Parse(time.RFC3339, includedUntilFilter)
+		if err != nil {
+			slog.Error("could not parse includedUntil", slog.String("error", err.Error()))
+		} else {
+			includedUntil = &t
+		}
+	}
+	participantIDFilter := c.DefaultQuery("participantId", "")
+	recruitmentStatusFilter := c.DefaultQuery("recruitmentStatus", "")
 
-	participants, paginationInfo, err := h.recruitmentListDBConn.GetParticipantsByRecruitmentListID(recruitmentListID, pageInt, limitInt)
+	// sort config
+	sortBy := c.DefaultQuery("sortBy", "includedAt")
+	sortOrder := c.DefaultQuery("sortDir", "asc")
+
+	pFilter := rdb.ParticipantFilter{
+		IncludedSince:     includedSince,
+		IncludedUntil:     includedUntil,
+		ParticipantID:     participantIDFilter,
+		RecruitmentStatus: recruitmentStatusFilter,
+	}
+
+	sort := rdb.ParticipantSort{
+		Field: sortBy,
+		Order: sortOrder,
+	}
+
+	slog.Info("get participants", slog.String("userID", token.Subject), slog.String("recruitmentListID", recruitmentListID), slog.String("page", page), slog.String("limit", limit), slog.Any("filter", pFilter), slog.Any("sort", sort))
+
+	participants, paginationInfo, err := h.recruitmentListDBConn.GetParticipantsByRecruitmentListID(recruitmentListID, pageInt, limitInt, pFilter, sort)
 	if err != nil {
 		slog.Error("could not get participants", slog.String("error", err.Error()))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not get participants"})
@@ -585,7 +625,6 @@ func (h *HttpEndpoints) getParticipants(c *gin.Context) {
 		"participants": participants,
 		"pagination":   paginationInfo,
 	})
-
 }
 
 func (h *HttpEndpoints) getParticipant(c *gin.Context) {
