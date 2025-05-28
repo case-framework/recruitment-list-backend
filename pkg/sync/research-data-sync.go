@@ -102,14 +102,14 @@ func SyncDataForParticipant(
 	}
 
 	// update participant infos:
-	updadatedParticipantInfos, err := updateAndSaveParticipantInfos(rdb, studyDB, recruitmentList, instanceID, participant, studyParticipant, lastDataSyncInfo.DataSyncStartedAt, globalStudySecret)
+	updatedParticipantInfos, err := updateAndSaveParticipantInfos(rdb, studyDB, recruitmentList, instanceID, participant, studyParticipant, lastDataSyncInfo.DataSyncStartedAt, globalStudySecret)
 	if err != nil {
 		slog.Error("could not update participant infos", slog.String("error", err.Error()))
 		return err
 	}
 
 	// check and if needed apply exclusion conditions
-	if toExclude := CheckExclusionConditions(recruitmentList, updadatedParticipantInfos); toExclude {
+	if toExclude := CheckExclusionConditions(recruitmentList, updatedParticipantInfos); toExclude {
 		if err := rdb.OnParticipantDeleted(participant, recruitmentList.ID.Hex(), "excluded by exclusion conditions"); err != nil {
 			slog.Error("could not exclude participant", slog.String("error", err.Error()))
 			return err
