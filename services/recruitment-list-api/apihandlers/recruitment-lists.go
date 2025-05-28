@@ -3,6 +3,7 @@ package apihandlers
 import (
 	"encoding/csv"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 
+	studyService "github.com/case-framework/case-backend/pkg/study"
 	studyTypes "github.com/case-framework/case-backend/pkg/study/types"
 	rdb "github.com/case-framework/recruitment-list-backend/pkg/db/recruitment-list"
 	pc "github.com/case-framework/recruitment-list-backend/pkg/permission-checker"
@@ -95,6 +97,7 @@ func (h *HttpEndpoints) AddRecruitmentListsAPI(rg *gin.RouterGroup) {
 				participantGroup.POST("/:participantID/status", h.updateParticipantStatus)
 				participantGroup.GET("/:participantID/notes", h.getParticipantNotes)
 				participantGroup.POST("/:participantID/notes", h.addParticipantNote)
+				participantGroup.POST("/:participantID/execute-action", h.executeParticipantAction)
 				participantGroup.DELETE("/:participantID/notes/:noteID", h.deleteParticipantNote)
 			}
 
@@ -872,6 +875,136 @@ func (h *HttpEndpoints) deleteParticipantNote(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "participant note deleted"})
+}
+
+type ExecuteParticipantActionRequest struct {
+	ActionID string `json:"actionId"`
+}
+
+func (h *HttpEndpoints) executeParticipantAction(c *gin.Context) {
+	token := c.MustGet("validatedToken").(*jwthandling.ManagementUserClaims)
+
+	recruitmentListID := c.Param("id")
+	if recruitmentListID == "" {
+		slog.Warn("no recruitmentListID")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "no recruitmentListID"})
+		return
+	}
+
+	participantID := c.Param("participantID")
+	if participantID == "" {
+		slog.Warn("no participantID")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "no participantID"})
+		return
+	}
+
+	var req ExecuteParticipantActionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		slog.Error("failed to bind request", slog.String("error", err.Error()))
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	slog.Info("execute participant action", slog.String("userID", token.Subject), slog.String("recruitmentListID", recruitmentListID), slog.String("participantID", participantID), slog.String("actionID", req.ActionID))
+
+	recruitmentList, err := h.recruitmentListDBConn.GetRecruitmentListByID(recruitmentListID)
+	if err != nil {
+		slog.Error("could not get recruitment list", slog.String("error", err.Error()))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not get recruitment list"})
+		return
+	}
+
+	var action *rdb.StudyAction
+	for _, a := range recruitmentList.StudyActions {
+		if a.ID == req.ActionID {
+			action = &a
+			break
+		}
+	}
+
+	if action == nil {
+		slog.Error("action not found", slog.String("actionID", req.ActionID))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "action not found"})
+		return
+	}
+
+	ruiParticipant, err := h.recruitmentListDBConn.GetParticipantByID(participantID, recruitmentListID)
+	if err != nil {
+		slog.Error("could not get participant", slog.String("error", err.Error()))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not get participant"})
+		return
+	}
+
+	if ruiParticipant.DeletedAt != nil {
+		slog.Error("participant is deleted", slog.String("participantID", participantID))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "participant is deleted"})
+		return
+	}
+
+	var parsedStudyAction []studyTypes.Expression
+	if err := json.Unmarshal([]byte(action.EncodedAction), &parsedStudyAction); err != nil {
+		slog.Error("could not unmarshal study action", slog.String("error", err.Error()))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not unmarshal study action"})
+		return
+	}
+
+	studyKey := recruitmentList.ParticipantInclusion.StudyKey
+	actionReq := studyService.RunStudyActionReq{
+		InstanceID:           h.studyServiceConf.InstanceID,
+		StudyKey:             studyKey,
+		OnlyForParticipantID: ruiParticipant.ParticipantID,
+		Rules:                parsedStudyAction,
+		OnProgressFn:         nil,
+	}
+
+	// execute action & update participant in study system
+	_, err = studyService.OnRunStudyAction(actionReq)
+
+	if err != nil {
+		slog.Error("could not execute study action", slog.String("error", err.Error()))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not execute study action"})
+		return
+	}
+
+	studyParticipant, err := h.studyDBConn.GetParticipantByID(h.studyServiceConf.InstanceID, studyKey, ruiParticipant.ParticipantID)
+	if err != nil {
+		slog.Error("could not get study participant", slog.String("error", err.Error()))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not get study participant"})
+		return
+	}
+	fmt.Println("studyParticipant", studyParticipant)
+
+	// add note:
+	creator, err := h.recruitmentListDBConn.GetResearcherUserByID(token.Subject)
+	if err != nil {
+		slog.Error("could not get creator", slog.String("error", err.Error()))
+	} else {
+		creatorName := creator.Username + " (" + creator.Email + ")"
+
+		if _, err := h.recruitmentListDBConn.CreateParticipantNote(participantID, recruitmentListID,
+			"[ACTION EXECUTED] "+action.Label,
+			token.Subject,
+			creatorName,
+		); err != nil {
+			slog.Error("could not create participant note", slog.String("error", err.Error()))
+		}
+	}
+
+	lastDataSyncInfo, err := h.recruitmentListDBConn.GetSyncInfoByRLID(recruitmentListID)
+	if err != nil {
+		slog.Debug("could not get sync info", slog.String("error", err.Error()))
+		old := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+		lastDataSyncInfo = &rdb.SyncInfo{
+			DataSyncStartedAt: &old,
+		}
+	}
+	if err := sync.SyncDataForParticipant(h.recruitmentListDBConn, h.studyDBConn, recruitmentList, ruiParticipant, h.studyServiceConf.InstanceID, studyKey, lastDataSyncInfo, h.studyServiceConf.GlobalSecret, true); err != nil {
+		slog.Error("could not sync data for participant", slog.String("error", err.Error()))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not sync data for participant"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "participant action executed"})
 }
 
 func (h *HttpEndpoints) getAvailableResponses(c *gin.Context) {

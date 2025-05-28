@@ -7,6 +7,8 @@ import (
 
 	"github.com/case-framework/case-backend/pkg/apihelpers"
 	"github.com/case-framework/case-backend/pkg/db"
+	"github.com/case-framework/case-backend/pkg/study"
+	"github.com/case-framework/case-backend/pkg/study/studyengine"
 	"github.com/case-framework/case-backend/pkg/utils"
 	"github.com/gin-gonic/gin"
 
@@ -56,8 +58,9 @@ type RecruitmentListApiConfig struct {
 	} `json:"user_management_config" yaml:"user_management_config"`
 
 	StudyServicesConnection struct {
-		InstanceID   string `json:"instance_id" yaml:"instance_id"`
-		GlobalSecret string `json:"global_secret" yaml:"global_secret"`
+		InstanceID       string                        `json:"instance_id" yaml:"instance_id"`
+		GlobalSecret     string                        `json:"global_secret" yaml:"global_secret"`
+		ExternalServices []studyengine.ExternalService `json:"external_services" yaml:"external_services"`
 	} `json:"study_service_connection" yaml:"study_service_connection"`
 
 	// DB configs
@@ -106,11 +109,21 @@ func init() {
 	// Init DBs
 	initDBs()
 
+	initStudyService()
+
 	if !conf.GinConfig.DebugMode {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
 	checkRecruitmentListFilestorePath()
+}
+
+func initStudyService() {
+	study.Init(
+		studyDBService,
+		conf.StudyServicesConnection.GlobalSecret,
+		conf.StudyServicesConnection.ExternalServices,
+	)
 }
 
 func secretsOverride() {
