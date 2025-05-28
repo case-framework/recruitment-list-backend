@@ -3,7 +3,6 @@ package apihandlers
 import (
 	"encoding/csv"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -965,14 +964,6 @@ func (h *HttpEndpoints) executeParticipantAction(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not execute study action"})
 		return
 	}
-
-	studyParticipant, err := h.studyDBConn.GetParticipantByID(h.studyServiceConf.InstanceID, studyKey, ruiParticipant.ParticipantID)
-	if err != nil {
-		slog.Error("could not get study participant", slog.String("error", err.Error()))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not get study participant"})
-		return
-	}
-	fmt.Println("studyParticipant", studyParticipant)
 
 	// add note:
 	creator, err := h.recruitmentListDBConn.GetResearcherUserByID(token.Subject)
