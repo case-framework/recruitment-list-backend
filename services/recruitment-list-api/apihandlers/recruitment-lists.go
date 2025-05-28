@@ -62,6 +62,7 @@ func (h *HttpEndpoints) AddRecruitmentListsAPI(rg *gin.RouterGroup) {
 		{
 
 			rlManageGroup.PUT("", h.updateRecruitmentList)
+			rlManageGroup.PUT("/study-actions", mw.RequirePayload(), h.updateRecruitmentListStudyActions)
 			rlManageGroup.POST("/import-participant", mw.RequirePayload(), h.importParticipant)
 			rlManageGroup.GET("/permissions", h.getRecruitmentListPermissions)
 			rlManageGroup.POST("/permissions", mw.RequirePayload(), h.createRecruitmentListPermission)
@@ -247,6 +248,38 @@ func (h *HttpEndpoints) updateRecruitmentList(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "recruitment list updated",
 	})
+}
+
+type UpdateRecruitmentListStudyActionsRequest struct {
+	StudyActions []rdb.StudyAction `json:"studyActions"`
+}
+
+func (h *HttpEndpoints) updateRecruitmentListStudyActions(c *gin.Context) {
+	token := c.MustGet("validatedToken").(*jwthandling.ManagementUserClaims)
+
+	recruitmentListID := c.Param("id")
+	if recruitmentListID == "" {
+		slog.Warn("no recruitmentListID")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "no recruitmentListID"})
+		return
+	}
+
+	var req UpdateRecruitmentListStudyActionsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		slog.Error("failed to bind request", slog.String("error", err.Error()))
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	slog.Info("update recruitment list study actions", slog.String("userID", token.Subject), slog.String("recruitmentListID", recruitmentListID))
+
+	if err := h.recruitmentListDBConn.UpdateRecruitmentListStudyActions(recruitmentListID, req.StudyActions); err != nil {
+		slog.Error("could not update recruitment list study actions", slog.String("error", err.Error()))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not update recruitment list study actions"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "recruitment list study actions updated"})
 }
 
 type ImportParticipantRequest struct {

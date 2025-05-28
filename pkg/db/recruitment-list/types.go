@@ -101,6 +101,13 @@ type Customization struct {
 	RecruitmentStatusValues []string `json:"recruitmentStatusValues,omitempty" bson:"recruitmentStatusValues,omitempty"`
 }
 
+type StudyAction struct {
+	ID            string `json:"id,omitempty" bson:"id,omitempty"`
+	EncodedAction string `json:"encodedAction,omitempty" bson:"encodedAction,omitempty"`
+	Label         string `json:"label,omitempty" bson:"label,omitempty"`
+	Description   string `json:"description,omitempty" bson:"description,omitempty"`
+}
+
 type RecruitmentList struct {
 	ID                   primitive.ObjectID    `json:"id,omitempty" bson:"_id,omitempty"`
 	Name                 string                `json:"name,omitempty" bson:"name,omitempty"`
@@ -111,4 +118,5 @@ type RecruitmentList struct {
 	ExclusionConditions  []ExclusionCondition  `json:"exclusionConditions,omitempty" bson:"exclusionConditions,omitempty"`
 	ParticipantData      ParticipantDataConfig `json:"participantData,omitempty" bson:"participantData,omitempty"`
 	Customization        Customization         `json:"customization,omitempty" bson:"customization,omitempty"`
+	StudyActions         []StudyAction         `json:"studyActions,omitempty" bson:"studyActions,omitempty"`
 }
