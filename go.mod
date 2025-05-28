@@ -5,7 +5,7 @@ go 1.23.0
 toolchain go1.24.0
 
 require (
-	github.com/case-framework/case-backend v0.0.0-20250322065142-97ef8c453df6
+	github.com/case-framework/case-backend v0.0.0-20250528101529-10289c39b67d
 	github.com/gin-contrib/cors v1.7.4
 	github.com/gin-gonic/gin v1.10.0
 	go.mongodb.org/mongo-driver v1.17.3

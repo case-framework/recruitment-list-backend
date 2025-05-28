@@ -56,48 +56,7 @@ func SyncResearchDataForRL(
 	resetResponseParserCache()
 
 	if err := rdb.IterateParticipantsByRecruitmentListID(recruitmentListID, func(participant *rDB.Participant) error {
-		if participant.DeletedAt != nil && !participant.DeletedAt.IsZero() {
-			slog.Debug("skip deleted participant", slog.String("participantID", participant.ParticipantID))
-			return nil
-		}
-
-		// fetch participant info from study DB:
-		studyParticipant, err := studyDB.GetParticipantByID(instanceID, studyKey, participant.ParticipantID)
-		if err != nil {
-			slog.Error("could not retrieve participant from study DB", slog.String("error", err.Error()))
-			return err
-		}
-
-		// check if participant is deleted in study DB:
-		if studyParticipant.StudyStatus == studyTypes.PARTICIPANT_STUDY_STATUS_ACCOUNT_DELETED {
-			if err := rdb.OnParticipantDeleted(participant, recruitmentListID, "deleted in study DB"); err != nil {
-				slog.Error("could not delete participant", slog.String("error", err.Error()))
-				return err
-			}
-			return nil
-		}
-
-		// update participant infos:
-		updadatedParticipantInfos, err := updateAndSaveParticipantInfos(rdb, studyDB, recruitmentList, instanceID, participant, studyParticipant, lastDataSyncInfo.DataSyncStartedAt, globalStudySecret)
-		if err != nil {
-			slog.Error("could not update participant infos", slog.String("error", err.Error()))
-			return err
-		}
-
-		// check and if needed apply exclusion conditions
-		if toExclude := checkExclusionConditions(recruitmentList, updadatedParticipantInfos); toExclude {
-			if err := rdb.OnParticipantDeleted(participant, recruitmentListID, "excluded by exclusion conditions"); err != nil {
-				slog.Error("could not exclude participant", slog.String("error", err.Error()))
-				return err
-			}
-			slog.Info("excluded participant", slog.String("pid", participant.ParticipantID), slog.String("rlID", recruitmentListID))
-			return nil
-		}
-
-		// update participant responses:
-		syncNewResponses(rdb, studyDB, recruitmentList, instanceID, participant.ParticipantID, lastDataSyncInfo)
-
-		return nil
+		return SyncDataForParticipant(rdb, studyDB, recruitmentList, participant, instanceID, studyKey, lastDataSyncInfo, globalStudySecret, false)
 	}); err != nil {
 		slog.Error("could not iterate participants", slog.String("error", err.Error()))
 	}
@@ -105,6 +64,63 @@ func SyncResearchDataForRL(
 	if err := rdb.FinishDataSync(recruitmentListID); err != nil {
 		slog.Error("could not finish data sync", slog.String("error", err.Error()))
 		return err
+	}
+
+	return nil
+}
+
+func SyncDataForParticipant(
+	rdb *rDB.RecruitmentListDBService,
+	studyDB *sDB.StudyDBService,
+	recruitmentList *rDB.RecruitmentList,
+	participant *rDB.Participant,
+	instanceID string,
+	studyKey string,
+	lastDataSyncInfo *rDB.SyncInfo,
+	globalStudySecret string,
+	skipResponseSync bool,
+) error {
+	if participant.DeletedAt != nil && !participant.DeletedAt.IsZero() {
+		slog.Debug("skip deleted participant", slog.String("participantID", participant.ParticipantID))
+		return nil
+	}
+
+	// fetch participant info from study DB:
+	studyParticipant, err := studyDB.GetParticipantByID(instanceID, studyKey, participant.ParticipantID)
+	if err != nil {
+		slog.Error("could not retrieve participant from study DB", slog.String("error", err.Error()))
+		return err
+	}
+
+	// check if participant is deleted in study DB:
+	if studyParticipant.StudyStatus == studyTypes.PARTICIPANT_STUDY_STATUS_ACCOUNT_DELETED {
+		if err := rdb.OnParticipantDeleted(participant, recruitmentList.ID.Hex(), "deleted in study DB"); err != nil {
+			slog.Error("could not delete participant", slog.String("error", err.Error()))
+			return err
+		}
+		return nil
+	}
+
+	// update participant infos:
+	updatedParticipantInfos, err := updateAndSaveParticipantInfos(rdb, studyDB, recruitmentList, instanceID, participant, studyParticipant, lastDataSyncInfo.DataSyncStartedAt, globalStudySecret)
+	if err != nil {
+		slog.Error("could not update participant infos", slog.String("error", err.Error()))
+		return err
+	}
+
+	// check and if needed apply exclusion conditions
+	if toExclude := CheckExclusionConditions(recruitmentList, updatedParticipantInfos); toExclude {
+		if err := rdb.OnParticipantDeleted(participant, recruitmentList.ID.Hex(), "excluded by exclusion conditions"); err != nil {
+			slog.Error("could not exclude participant", slog.String("error", err.Error()))
+			return err
+		}
+		slog.Info("excluded participant", slog.String("pid", participant.ParticipantID), slog.String("rlID", recruitmentList.ID.Hex()))
+		return nil
+	}
+
+	// update participant responses:
+	if !skipResponseSync {
+		syncNewResponses(rdb, studyDB, recruitmentList, instanceID, participant.ParticipantID, lastDataSyncInfo)
 	}
 
 	return nil
@@ -316,7 +332,7 @@ func updateAndSaveParticipantInfos(
 	return updatedParticipantInfo, nil
 }
 
-func checkExclusionConditions(recruitmentList *rDB.RecruitmentList, updatedParticipantInfo map[string]interface{}) bool {
+func CheckExclusionConditions(recruitmentList *rDB.RecruitmentList, updatedParticipantInfo map[string]interface{}) bool {
 	for _, cond := range recruitmentList.ExclusionConditions {
 		val, ok := updatedParticipantInfo[cond.Key]
 		if !ok {

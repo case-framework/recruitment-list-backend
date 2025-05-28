@@ -54,6 +54,19 @@ func (dbService *RecruitmentListDBService) GetRecruitmentListByID(listID string)
 	return &list, err
 }
 
+func (dbService *RecruitmentListDBService) UpdateRecruitmentListStudyActions(listID string, studyActions []StudyAction) error {
+	ctx, cancel := dbService.getContext()
+	defer cancel()
+	_id, err := primitive.ObjectIDFromHex(listID)
+	if err != nil {
+		return err
+	}
+	filter := bson.M{"_id": _id}
+	update := bson.M{"$set": bson.M{"studyActions": studyActions}}
+	_, err = dbService.collectionRecruitmentLists().UpdateOne(ctx, filter, update)
+	return err
+}
+
 func (dbService *RecruitmentListDBService) GetRecruitmentListsInfos() ([]RecruitmentList, error) {
 	ctx, cancel := dbService.getContext()
 	defer cancel()
