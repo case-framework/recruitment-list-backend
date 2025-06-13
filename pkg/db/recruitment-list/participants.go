@@ -229,7 +229,11 @@ func (dbService *RecruitmentListDBService) GetParticipantsByRecruitmentListID(rl
 		filter["participantId"] = pFilter.ParticipantID
 	}
 	if pFilter.RecruitmentStatus != "" {
-		filter["recruitmentStatus"] = pFilter.RecruitmentStatus
+		if pFilter.RecruitmentStatus == "_empty_" {
+			filter["recruitmentStatus"] = ""
+		} else {
+			filter["recruitmentStatus"] = pFilter.RecruitmentStatus
+		}
 	}
 
 	count, err := dbService.collectionParticipants().CountDocuments(ctx, filter)
