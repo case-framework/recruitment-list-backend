@@ -122,6 +122,9 @@ func secretsOverride() {
 	}
 
 	if smtpBridgeAPIKey := os.Getenv(ENV_SMTP_BRIDGE_API_KEY); smtpBridgeAPIKey != "" {
+		if conf.SmtpBridgeConfig == nil {
+			panic("SMTP_BRIDGE_API_KEY is set, but smtp_bridge_config is not set in the config file")
+		}
 		conf.SmtpBridgeConfig.APIKey = smtpBridgeAPIKey
 	}
 }
