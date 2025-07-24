@@ -150,6 +150,24 @@ func secretsOverride() {
 	if studyGlobalSecret := os.Getenv(ENV_STUDY_GLOBAL_SECRET); studyGlobalSecret != "" {
 		conf.StudyServicesConnection.GlobalSecret = studyGlobalSecret
 	}
+
+	// Override API keys for external services
+	for i := range conf.StudyServicesConnection.ExternalServices {
+		service := &conf.StudyServicesConnection.ExternalServices[i]
+
+		// Skip if name is not defined
+		if service.Name == "" {
+			continue
+		}
+
+		// Generate environment variable name from service name
+		envVarName := utils.GenerateExternalServiceAPIKeyEnvVarName(service.Name)
+
+		// Override if environment variable exists
+		if apiKey := os.Getenv(envVarName); apiKey != "" {
+			service.APIKey = apiKey
+		}
+	}
 }
 
 func initDBs() {

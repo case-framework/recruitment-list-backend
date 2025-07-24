@@ -25,6 +25,8 @@ const (
 	ENV_STUDY_DB_PASSWORD = "STUDY_DB_PASSWORD"
 
 	ENV_STUDY_GLOBAL_SECRET = "STUDY_GLOBAL_SECRET"
+
+	ENV_SMTP_BRIDGE_API_KEY = "SMTP_BRIDGE_API_KEY"
 )
 
 type RecruitmentListApiConfig struct {
@@ -113,6 +115,17 @@ func secretsOverride() {
 
 	if studyGlobalSecret := os.Getenv(ENV_STUDY_GLOBAL_SECRET); studyGlobalSecret != "" {
 		conf.StudyServicesConnection.GlobalSecret = studyGlobalSecret
+	}
+	if conf.StudyServicesConnection.GlobalSecret == "" {
+		slog.Error("STUDY_GLOBAL_SECRET is not set, please set it in the environment variables or config file")
+		panic("STUDY_GLOBAL_SECRET is not set")
+	}
+
+	if smtpBridgeAPIKey := os.Getenv(ENV_SMTP_BRIDGE_API_KEY); smtpBridgeAPIKey != "" {
+		if conf.SmtpBridgeConfig == nil {
+			panic("SMTP_BRIDGE_API_KEY is set, but smtp_bridge_config is not set in the config file")
+		}
+		conf.SmtpBridgeConfig.APIKey = smtpBridgeAPIKey
 	}
 }
 
