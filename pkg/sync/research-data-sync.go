@@ -120,7 +120,7 @@ func SyncDataForParticipant(
 
 	// update participant responses:
 	if !skipResponseSync {
-		syncNewResponses(rdb, studyDB, recruitmentList, instanceID, participant.ParticipantID, lastDataSyncInfo)
+		syncNewResponses(rdb, studyDB, recruitmentList, instanceID, participant, lastDataSyncInfo)
 	}
 
 	return nil
@@ -417,9 +417,13 @@ func syncNewResponses(
 	studyDB *sDB.StudyDBService,
 	recruitmentList *rDB.RecruitmentList,
 	instanceID string,
-	participantID string,
+	participant *rDB.Participant,
 	lastDataSyncInfo *rDB.SyncInfo,
 ) {
+	if participant == nil {
+		slog.Error("participant should not be nil")
+		return
+	}
 	for _, respDef := range recruitmentList.ParticipantData.ResearchData {
 		checkResponsesSince := int64(0)
 		checkResponsesUntil := time.Now().Unix()
@@ -436,10 +440,13 @@ func syncNewResponses(
 			lastDataSyncStarted = lastDataSyncInfo.DataSyncStartedAt.Unix()
 		}
 
-		checkResponsesSince = max(checkResponsesSince, lastDataSyncStarted)
+		applySince := !participant.IncludedAt.After(time.Unix(lastDataSyncStarted, 0))
+		if applySince {
+			checkResponsesSince = max(checkResponsesSince, lastDataSyncStarted)
+		}
 
 		filter := bson.M{
-			"participantID": participantID,
+			"participantID": participant.ParticipantID,
 			"key":           respDef.SurveyKey,
 			"$and": bson.A{
 				bson.M{"arrivedAt": bson.M{"$lte": checkResponsesUntil}},
@@ -464,7 +471,7 @@ func syncNewResponses(
 		}
 
 		if len(responses) == 0 {
-			slog.Debug("no responses found", slog.String("participantID", participantID), slog.String("surveyKey", respDef.SurveyKey))
+			slog.Debug("no responses found", slog.String("participantID", participant.ParticipantID), slog.String("surveyKey", respDef.SurveyKey))
 			continue
 		}
 
@@ -474,7 +481,7 @@ func syncNewResponses(
 			instanceID,
 			recruitmentList,
 			respDef,
-			participantID,
+			participant.ParticipantID,
 			responseExporterCache,
 		)
 		if err != nil {
@@ -482,7 +489,7 @@ func syncNewResponses(
 			continue
 		}
 
-		if err := rdb.SaveResearchData(recruitmentList.ID.Hex(), participantID, researchData); err != nil {
+		if err := rdb.SaveResearchData(recruitmentList.ID.Hex(), participant.ParticipantID, researchData); err != nil {
 			slog.Error("could not save research data", slog.String("error", err.Error()))
 			continue
 		}
