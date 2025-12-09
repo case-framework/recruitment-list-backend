@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"log/slog"
 	"os"
 	"time"
@@ -16,6 +15,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	sdb "github.com/case-framework/case-backend/pkg/db/study"
+	dbutils "github.com/case-framework/recruitment-list-backend/pkg/db"
 	rdb "github.com/case-framework/recruitment-list-backend/pkg/db/recruitment-list"
 )
 
@@ -171,27 +171,9 @@ func secretsOverride() {
 	}
 }
 
-func initDBWithRetry(name string, initFunc func() error) error {
-	const maxRetries = 25
-	const retryInterval = 30 * time.Second
-
-	for attempt := 1; attempt <= maxRetries; attempt++ {
-		err := initFunc()
-		if err == nil {
-			return nil
-		}
-		slog.Error("Error connecting to "+name+" DB, retrying in 30 seconds...",
-			slog.Any("error", err),
-			slog.Int("attempt", attempt),
-			slog.Int("max_retries", maxRetries))
-		time.Sleep(retryInterval)
-	}
-	return errors.New("failed to connect to " + name + " DB after all retries")
-}
-
 func initDBs() {
 	// Initialize recruitment list DB with retry
-	if err := initDBWithRetry("recruitment list", func() error {
+	if err := dbutils.InitDBWithRetry("recruitment list", func() error {
 		var err error
 		recruitmentListDBService, err = rdb.NewRecruitmentListDBService(db.DBConfigFromYamlObj(conf.DBConfigs.RecruitmentListDB, nil))
 		return err
@@ -201,7 +183,7 @@ func initDBs() {
 	}
 
 	// Initialize study DB with retry
-	if err := initDBWithRetry("study", func() error {
+	if err := dbutils.InitDBWithRetry("study", func() error {
 		var err error
 		studyDBService, err = sdb.NewStudyDBService(db.DBConfigFromYamlObj(conf.DBConfigs.StudyDB, nil))
 		return err
