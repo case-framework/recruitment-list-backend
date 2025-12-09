@@ -180,13 +180,11 @@ func initDBWithRetry(name string, initFunc func() error) error {
 		if err == nil {
 			return nil
 		}
-		if attempt < maxRetries {
-			slog.Error("Error connecting to "+name+" DB, retrying in 30 seconds...",
-				slog.Any("error", err),
-				slog.Int("attempt", attempt),
-				slog.Int("max_retries", maxRetries))
-			time.Sleep(retryInterval)
-		}
+		slog.Error("Error connecting to "+name+" DB, retrying in 30 seconds...",
+			slog.Any("error", err),
+			slog.Int("attempt", attempt),
+			slog.Int("max_retries", maxRetries))
+		time.Sleep(retryInterval)
 	}
 	return errors.New("failed to connect to " + name + " DB after all retries")
 }
