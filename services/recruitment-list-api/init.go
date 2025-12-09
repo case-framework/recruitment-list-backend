@@ -171,15 +171,46 @@ func secretsOverride() {
 }
 
 func initDBs() {
-	var err error
-	recruitmentListDBService, err = rdb.NewManagementUserDBService(db.DBConfigFromYamlObj(conf.DBConfigs.RecruitmentListDB, nil))
-	if err != nil {
-		slog.Error("Error connecting to recruitment list DB", slog.String("error", err.Error()))
+	const maxRetries = 25
+	const retryInterval = 30 * time.Second
+
+	// Initialize recruitment list DB with retry
+	var recruitmentListErr error
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		recruitmentListDBService, recruitmentListErr = rdb.NewRecruitmentListDBService(db.DBConfigFromYamlObj(conf.DBConfigs.RecruitmentListDB, nil))
+		if recruitmentListErr == nil && recruitmentListDBService != nil {
+			break
+		}
+		if attempt < maxRetries {
+			slog.Error("Error connecting to recruitment list DB, retrying in 30 seconds...",
+				slog.String("error", recruitmentListErr.Error()),
+				slog.Int("attempt", attempt),
+				slog.Int("max_retries", maxRetries))
+			time.Sleep(retryInterval)
+		} else {
+			slog.Error("Failed to connect to recruitment list DB after all retries", slog.String("error", recruitmentListErr.Error()))
+			panic("Failed to establish recruitment list DB connection after 25 retries")
+		}
 	}
 
-	studyDBService, err = sdb.NewStudyDBService(db.DBConfigFromYamlObj(conf.DBConfigs.StudyDB, nil))
-	if err != nil {
-		slog.Error("Error connecting to Study DB", slog.String("error", err.Error()))
+	// Initialize study DB with retry
+	var studyErr error
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		studyDBService, studyErr = sdb.NewStudyDBService(db.DBConfigFromYamlObj(conf.DBConfigs.StudyDB, nil))
+		if studyErr == nil && studyDBService != nil {
+			break
+		}
+		if attempt < maxRetries {
+			slog.Error("Error connecting to Study DB, retrying in 30 seconds...",
+				slog.String("error", studyErr.Error()),
+				slog.Int("attempt", attempt),
+				slog.Int("max_retries", maxRetries))
+			time.Sleep(retryInterval)
+		} else {
+			slog.Error("Failed to connect to Study DB after all retries", slog.String("error", studyErr.Error()))
+			panic("Failed to establish Study DB connection after 25 retries")
+		}
+
 	}
 }
 

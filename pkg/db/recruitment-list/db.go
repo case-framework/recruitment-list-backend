@@ -35,7 +35,7 @@ type RecruitmentListDBService struct {
 	InstanceIDs     []string
 }
 
-func NewManagementUserDBService(configs db.DBConfig) (*RecruitmentListDBService, error) {
+func NewRecruitmentListDBService(configs db.DBConfig) (*RecruitmentListDBService, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(configs.Timeout)*time.Second)
 	defer cancel()
 

@@ -131,7 +131,7 @@ func secretsOverride() {
 
 func initDBs() {
 	var err error
-	recruitmentListDBService, err = rdb.NewManagementUserDBService(db.DBConfigFromYamlObj(conf.DBConfigs.RecruitmentListDB, nil))
+	recruitmentListDBService, err = rdb.NewRecruitmentListDBService(db.DBConfigFromYamlObj(conf.DBConfigs.RecruitmentListDB, nil))
 	if err != nil {
 		slog.Error("Error connecting to recruitment list DB", slog.String("error", err.Error()))
 	}
