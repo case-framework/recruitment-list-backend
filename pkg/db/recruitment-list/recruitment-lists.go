@@ -76,6 +76,7 @@ func (dbService *RecruitmentListDBService) GetRecruitmentListsInfos() ([]Recruit
 		"id":          1,
 		"name":        1,
 		"description": 1,
+		"tags":        1,
 		"createdAt":   1,
 	}
 	opts := options.Find()

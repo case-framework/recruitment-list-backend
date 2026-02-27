@@ -29,6 +29,7 @@ func (h *HttpEndpoints) AddRecruitmentListsAPI(rg *gin.RouterGroup) {
 	recruitmentListsGroup.Use(mw.GetAndValidateManagementUserJWT(h.tokenSignKey))
 	{
 		recruitmentListsGroup.GET("", h.getRecruitmentLists)
+		recruitmentListsGroup.GET("/tags", h.getRecruitmentListTags)
 		recruitmentListsGroup.POST("",
 			mw.RequirePayload(),
 			h.useAuthorisedHandler(
@@ -63,6 +64,7 @@ func (h *HttpEndpoints) AddRecruitmentListsAPI(rg *gin.RouterGroup) {
 		{
 
 			rlManageGroup.PUT("", h.updateRecruitmentList)
+			rlManageGroup.PUT("/tags", mw.RequirePayload(), h.updateRecruitmentListTags)
 			rlManageGroup.PUT("/study-actions", mw.RequirePayload(), h.updateRecruitmentListStudyActions)
 			rlManageGroup.POST("/import-participant", mw.RequirePayload(), h.importParticipant)
 			rlManageGroup.GET("/permissions", h.getRecruitmentListPermissions)
@@ -200,6 +202,21 @@ func (h *HttpEndpoints) getRecruitmentLists(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+func (h *HttpEndpoints) getRecruitmentListTags(c *gin.Context) {
+	token := c.MustGet("validatedToken").(*jwthandling.ManagementUserClaims)
+
+	slog.Info("get recruitment list tags", slog.String("userID", token.Subject))
+
+	tags, err := h.recruitmentListDBConn.GetRecruitmentListTags()
+	if err != nil {
+		slog.Error("could not get recruitment list tags", slog.String("error", err.Error()))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not get recruitment list tags"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"tags": tags})
+}
+
 func (h *HttpEndpoints) getRecruitmentList(c *gin.Context) {
 	token := c.MustGet("validatedToken").(*jwthandling.ManagementUserClaims)
 
@@ -254,6 +271,38 @@ func (h *HttpEndpoints) updateRecruitmentList(c *gin.Context) {
 
 type UpdateRecruitmentListStudyActionsRequest struct {
 	StudyActions []rdb.StudyAction `json:"studyActions"`
+}
+
+type UpdateRecruitmentListTagsRequest struct {
+	Tags []string `json:"tags"`
+}
+
+func (h *HttpEndpoints) updateRecruitmentListTags(c *gin.Context) {
+	token := c.MustGet("validatedToken").(*jwthandling.ManagementUserClaims)
+
+	recruitmentListID := c.Param("id")
+	if recruitmentListID == "" {
+		slog.Warn("no recruitmentListID")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "no recruitmentListID"})
+		return
+	}
+
+	var req UpdateRecruitmentListTagsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		slog.Error("failed to bind request", slog.String("error", err.Error()))
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	slog.Info("update recruitment list tags", slog.String("userID", token.Subject), slog.String("recruitmentListID", recruitmentListID))
+
+	if err := h.recruitmentListDBConn.UpdateRecruitmentListTags(recruitmentListID, req.Tags); err != nil {
+		slog.Error("could not update recruitment list tags", slog.String("error", err.Error()))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not update recruitment list tags"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "recruitment list tags updated"})
 }
 
 func (h *HttpEndpoints) updateRecruitmentListStudyActions(c *gin.Context) {

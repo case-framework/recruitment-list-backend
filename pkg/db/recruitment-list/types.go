@@ -112,6 +112,7 @@ type RecruitmentList struct {
 	ID                   primitive.ObjectID    `json:"id,omitempty" bson:"_id,omitempty"`
 	Name                 string                `json:"name,omitempty" bson:"name,omitempty"`
 	Description          string                `json:"description,omitempty" bson:"description,omitempty"`
+	Tags                 []string              `json:"tags,omitempty" bson:"tags,omitempty"`
 	CreatedAt            time.Time             `json:"createdAt,omitempty" bson:"createdAt,omitempty"`
 	CreatedBy            string                `json:"createdBy,omitempty" bson:"createdBy,omitempty"`
 	ParticipantInclusion ParticipantInclusion  `json:"participantInclusion,omitempty" bson:"participantInclusion,omitempty"`
