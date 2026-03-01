@@ -138,7 +138,7 @@ func (dbService *RecruitmentListDBService) UpdateParticipantStatus(pid string, r
 func (dbService *RecruitmentListDBService) UpdateParticipantInfos(
 	pid string,
 	rlID string,
-	infos map[string]interface{},
+	infos map[string]any,
 ) error {
 	ctx, cancel := dbService.getContext()
 	defer cancel()
