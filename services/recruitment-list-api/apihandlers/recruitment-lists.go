@@ -679,6 +679,7 @@ func (h *HttpEndpoints) getParticipants(c *gin.Context) {
 	}
 	participantIDFilter := c.DefaultQuery("participantId", "")
 	recruitmentStatusFilter := c.DefaultQuery("recruitmentStatus", "")
+	infosFilter := c.QueryMap("infos")
 
 	// sort config
 	sortBy := c.DefaultQuery("sortBy", "includedAt")
@@ -689,6 +690,7 @@ func (h *HttpEndpoints) getParticipants(c *gin.Context) {
 		IncludedUntil:     includedUntil,
 		ParticipantID:     participantIDFilter,
 		RecruitmentStatus: recruitmentStatusFilter,
+		Infos:             infosFilter,
 	}
 
 	sort := rdb.ParticipantSort{
