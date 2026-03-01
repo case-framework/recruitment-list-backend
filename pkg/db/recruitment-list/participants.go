@@ -16,14 +16,14 @@ func (dbService *RecruitmentListDBService) collectionParticipants() *mongo.Colle
 }
 
 type Participant struct {
-	ID                primitive.ObjectID     `json:"id,omitempty" bson:"_id,omitempty"`
-	ParticipantID     string                 `json:"participantId,omitempty" bson:"participantId,omitempty"`
-	RecruitmentListID string                 `json:"recruitmentListId,omitempty" bson:"recruitmentListId,omitempty"`
-	IncludedAt        time.Time              `json:"includedAt,omitempty" bson:"includedAt,omitempty"`
-	IncludedBy        string                 `json:"includedBy,omitempty" bson:"includedBy,omitempty"`
-	DeletedAt         *time.Time             `json:"deletedAt,omitempty" bson:"deletedAt,omitempty"`
-	RecruitmentStatus string                 `json:"recruitmentStatus" bson:"recruitmentStatus"`
-	Infos             map[string]interface{} `json:"infos,omitempty" bson:"infos,omitempty"`
+	ID                primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
+	ParticipantID     string             `json:"participantId,omitempty" bson:"participantId,omitempty"`
+	RecruitmentListID string             `json:"recruitmentListId,omitempty" bson:"recruitmentListId,omitempty"`
+	IncludedAt        time.Time          `json:"includedAt,omitempty" bson:"includedAt,omitempty"`
+	IncludedBy        string             `json:"includedBy,omitempty" bson:"includedBy,omitempty"`
+	DeletedAt         *time.Time         `json:"deletedAt,omitempty" bson:"deletedAt,omitempty"`
+	RecruitmentStatus string             `json:"recruitmentStatus" bson:"recruitmentStatus"`
+	Infos             map[string]any     `json:"infos,omitempty" bson:"infos,omitempty"`
 }
 
 func (dbService *RecruitmentListDBService) createIndexesForParticipants() error {
@@ -202,6 +202,7 @@ type ParticipantFilter struct {
 	IncludedUntil     *time.Time
 	ParticipantID     string
 	RecruitmentStatus string
+	Infos             map[string]string
 }
 
 type ParticipantSort struct {
@@ -234,6 +235,12 @@ func (dbService *RecruitmentListDBService) GetParticipantsByRecruitmentListID(rl
 		} else {
 			filter["recruitmentStatus"] = pFilter.RecruitmentStatus
 		}
+	}
+	for key, value := range pFilter.Infos {
+		if key == "" {
+			continue
+		}
+		filter["infos."+key] = value
 	}
 
 	count, err := dbService.collectionParticipants().CountDocuments(ctx, filter)
