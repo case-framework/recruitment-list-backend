@@ -228,7 +228,7 @@ func updateAndSaveParticipantInfos(
 
 			// find item with key
 			itemResp, ok := findSurveyItemResponseByItemKey(latestConfidentialData, itemKey)
-			if !ok || itemResp == nil {
+			if !ok || itemResp == nil || itemResp.Response == nil {
 				slog.Debug("no item response found", slog.String("itemKey", itemKey))
 				continue
 			}
@@ -355,10 +355,16 @@ func findSurveyItemResponseByItemKey(response studyTypes.SurveyResponse, itemKey
 }
 
 func extractSlotValue(item *studyTypes.ResponseItem, slotKey string, pInfoDef rDB.ParticipantInfo) (string, bool) {
+	if item == nil {
+		return "", false
+	}
 	slotParts := strings.Split(slotKey, ".")
 
 	var currentSlot *studyTypes.ResponseItem
 	for _, slot := range item.Items {
+		if slot == nil {
+			continue
+		}
 		if slot.Key == slotParts[0] {
 			currentSlot = slot
 			break
@@ -381,8 +387,11 @@ func extractSlotValue(item *studyTypes.ResponseItem, slotKey string, pInfoDef rD
 			}
 
 			vals := make([]string, len(currentSlot.Items))
-			for i, item := range currentSlot.Items {
-				vals[i] = applyMapping(pInfoDef, item.Key)
+			for i, child := range currentSlot.Items {
+				if child == nil {
+					continue
+				}
+				vals[i] = applyMapping(pInfoDef, child.Key)
 			}
 			return strings.Join(vals, ","), true
 
