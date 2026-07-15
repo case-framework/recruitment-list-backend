@@ -62,7 +62,6 @@ db_configs:
     max_pool_size: 8
     use_no_cursor_timeout: false
     db_name_prefix: ""
-    run_index_creation: false
 
 # SMTP Bridge configuration (optional)
 smtp_bridge_config:

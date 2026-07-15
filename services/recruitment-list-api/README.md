@@ -77,7 +77,6 @@ db_configs:
     max_pool_size: 8
     use_no_cursor_timeout: false
     db_name_prefix: ""
-    run_index_creation: false
 
 # File storage path for generated files
 filestore_path: "/path/to/filestore"
@@ -112,4 +111,3 @@ For each external service defined in the configuration, the API key can be overr
 For example:
 - `EXTERNAL_SERVICE_SERVICE1_API_KEY`: Overrides API key for service named "service1"
 - `EXTERNAL_SERVICE_SERVICE2_API_KEY`: Overrides API key for service named "service2"
-

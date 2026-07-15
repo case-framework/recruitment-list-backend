@@ -41,8 +41,8 @@ type RecruitmentListApiConfig struct {
 
 	// DB configs
 	DBConfigs struct {
-		RecruitmentListDB db.DBConfigYaml `json:"recruitment_list_db" yaml:"recruitment_list_db"`
-		StudyDB           db.DBConfigYaml `json:"study_db" yaml:"study_db"`
+		RecruitmentListDB rdb.DBConfigYaml `json:"recruitment_list_db" yaml:"recruitment_list_db"`
+		StudyDB           db.DBConfigYaml  `json:"study_db" yaml:"study_db"`
 	} `json:"db_configs" yaml:"db_configs"`
 
 	SmtpBridgeConfig *struct {
@@ -134,7 +134,10 @@ func initDBs() {
 	// Initialize recruitment list DB with retry
 	if err := dbutils.InitDBWithRetry("recruitment list", func() error {
 		var err error
-		recruitmentListDBService, err = rdb.NewRecruitmentListDBService(db.DBConfigFromYamlObj(conf.DBConfigs.RecruitmentListDB, nil))
+		recruitmentListDBService, err = rdb.NewRecruitmentListDBService(
+			db.DBConfigFromYamlObj(conf.DBConfigs.RecruitmentListDB.DBConfigYaml, nil),
+			conf.DBConfigs.RecruitmentListDB.RunIndexCreation,
+		)
 		return err
 	}); err != nil {
 		slog.Error("Failed to connect to recruitment list DB after all retries", slog.String("error", err.Error()))

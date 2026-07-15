@@ -35,7 +35,7 @@ type RecruitmentListDBService struct {
 	InstanceIDs     []string
 }
 
-func NewRecruitmentListDBService(configs db.DBConfig) (*RecruitmentListDBService, error) {
+func NewRecruitmentListDBService(configs db.DBConfig, runIndexCreation bool) (*RecruitmentListDBService, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(configs.Timeout)*time.Second)
 	defer cancel()
 
@@ -65,7 +65,7 @@ func NewRecruitmentListDBService(configs db.DBConfig) (*RecruitmentListDBService
 		InstanceIDs:     configs.InstanceIDs,
 	}
 
-	if configs.RunIndexCreation {
+	if runIndexCreation {
 		if err := rDBSc.ensureIndexes(); err != nil {
 			slog.Error("Error ensuring indexes for recruitment list DV", slog.String("error", err.Error()))
 		}

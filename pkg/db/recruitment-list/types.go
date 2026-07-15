@@ -3,8 +3,17 @@ package recruitmentlist
 import (
 	"time"
 
+	"github.com/case-framework/case-backend/pkg/db"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
+
+// DBConfigYaml contains the shared database connection settings plus the
+// recruitment-list-specific index creation switch. The switch is intentionally
+// kept local because it was removed from case-backend's shared DB config.
+type DBConfigYaml struct {
+	db.DBConfigYaml  `yaml:",inline"`
+	RunIndexCreation bool `yaml:"run_index_creation"`
+}
 
 const (
 	PARTICIPANT_INCLUSION_TYPE_MANUAL = "manual"
